@@ -1,21 +1,23 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import requests
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from scipy.integrate import solve_ivp
 
 # ---------------------------------------------------------
 # 1. Configuración de la Página
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="P.N. Calilegua | Eco-Data Dashboard",
+    page_title="P.N. Calilegua | Eco-Physics Dashboard",
     page_icon="🌿",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# CSS Personalizado para mejorar el aspecto visual
+# Estilo CSS personalizado
 st.markdown("""
     <style>
     .main-title {
@@ -40,17 +42,17 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 2. Hero Section & Contexto Ecológico
+# 2. Hero Section & Contexto
 # ---------------------------------------------------------
-st.markdown('<p class="main-title">🌿 Parque Nacional Calilegua: Diagnóstico Eco-Hidrológico</p>', unsafe_allow_html=True)
-st.markdown('<p class="sub-title">Análisis de series temporales multivariables para la conservación del bioma de las Yungas (Jujuy, Argentina)</p>', unsafe_allow_html=True)
+st.markdown('<p class="main-title">🌿 Parque Nacional Calilegua: Diagnóstico Eco-Físico</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-title">Series temporales multivariables y modelado dinámico de sistemas complejos en el bioma de las Yungas (Jujuy, Argentina)</p>', unsafe_allow_html=True)
 
 with st.container():
     st.markdown("""
     <div class="context-box">
-    <b>Contexto Ecológico:</b> El Parque Nacional Calilegua resguarda una de las muestras más representativas de las <i>Yungas</i> (selvas de montaña). 
-    Este ecosistema depende de un delicado equilibrio hídrico: las precipitaciones estacionales y la condensación de humedad en el dosel forestal 
-    sostienen la biodiversidad durante los meses secos. Este dashboard analiza la interacción entre temperatura, humedad del suelo y balance hídrico.
+    <b>Contexto Científico:</b> El Parque Nacional Calilegua resguarda una muestra clave de las <i>Yungas</i> (selva de montaña). 
+    Este dashboard combina ingesta de datos meteorológicos y edáficos mediante API con <b>modelado físico basado en ecuaciones diferenciales (EDO)</b> 
+    y análisis de atractor topológico en el <b>espacio de fases</b>, evaluando la inercia térmica y el balance hídrico del ecosistema.
     </div>
     """, unsafe_allow_html=True)
 
@@ -65,7 +67,8 @@ st.sidebar.subheader("👨‍🔬 Autor")
 st.sidebar.markdown("""
 **Bruno Martín González**  
 *Físico & Data Scientist*  
-[LinkedIn](https://www.linkedin.com/in/bruno-mart%C3%ADn-gonz%C3%A1lez-96349a245/) | [GitHub](https://github.com/)
+*MSc en Sistemas Complejos y Biofísica*  
+[LinkedIn](https://www.linkedin.com/in/bruno-mart%C3%ADn-gonz%C3%A1lez-96349a245/)
 """)
 
 # ---------------------------------------------------------
@@ -134,12 +137,13 @@ col5.metric("🌱 Humedad Suelo (0-7cm)", f"{humedad_suelo_prom:.3f} m³/m³")
 st.markdown("---")
 
 # ---------------------------------------------------------
-# 6. Pestañas de Análisis Detallado
+# 6. Pestañas de Análisis y Modelado
 # ---------------------------------------------------------
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📊 Balance Hídrico & Suelo", 
     "🌡️ Microclima & Atmósfera", 
     "🔥 Matriz Térmica Mensual", 
+    "🔬 Modelado Físico (EDO) & Caos",
     "📋 Datos Crudos & Exportación"
 ])
 
@@ -148,10 +152,9 @@ with tab1:
     st.subheader("Relación entre Precipitación, Evapotranspiración y Humedad del Suelo")
     st.markdown("""
     En las Yungas, la pérdida de agua por evapotranspiración en época seca suele superar la precipitación directa. 
-    Observa cómo la **humedad del suelo (línea verde)** reacciona a los eventos intensos de lluvia y cae durante el invierno.
+    Observa cómo la **humedad del suelo (línea verde)** reacciona a los eventos intensos de lluvia y cae durante la estación seca.
     """)
     
-    # Resample diario
     df_daily = df.resample('D').agg({
         'precipitacion_mm': 'sum',
         'evapotranspiracion_mm': 'sum',
@@ -182,7 +185,7 @@ with tab1:
 # --- TAB 2: MICROCLIMA Y ATMÓSFERA ---
 with tab2:
     st.subheader("Evolución Térmica y Humedad Relativa")
-    st.markdown("La **humedad relativa** elevada es la responsable de la formación de nieblas montanas que caracterizan al sotobosque de Calilegua.")
+    st.markdown("La **humedad relativa** elevada favorece la formación de nieblas montanas que caracterizan al sotobosque de Calilegua.")
     
     fig_temp = go.Figure()
     fig_temp.add_trace(go.Scatter(x=df.index, y=df['temp_c'], mode='lines', name='Temp Horaria', line=dict(color='lightgray', width=1)))
@@ -213,16 +216,94 @@ with tab3:
     fig_heatmap.update_layout(template="plotly_white", height=450)
     st.plotly_chart(fig_heatmap, use_container_width=True)
 
-# --- TAB 4: DATOS CRUDOS ---
+# --- TAB 4: MODELADO FÍSICO & SISTEMAS COMPLEJOS ---
 with tab4:
-    st.subheader("Exploración de Datos Limpios")
+    st.subheader("🔬 Modelado Dinámico de Inercia Térmica (Ecuaciones Diferenciales)")
+    st.markdown("""
+    Formulamos un **Modelo Físico de Balance de Energía Simplificado** (Relajación Térmica de Newton) para evaluar la respuesta de la masa vegetal. 
+    Modelamos la variación de la temperatura $T(t)$ forzada por la radiación solar incidente $R(t)$ y disipada por transferencia convectiva ambiental:
+    
+    $$\\frac{dT}{dt} = -\\frac{1}{\\tau} (T - T_{\\text{base}}) + \\alpha R(t)$$
+    """)
+    
+    col_param1, col_param2 = st.columns(2)
+    with col_param1:
+        tau_val = st.slider("Constante de Relajación Térmica (τ en horas):", min_value=1.0, max_value=24.0, value=6.0, step=0.5)
+    with col_param2:
+        alpha_val = st.slider("Coeficiente de Absorción Radiativa (α):", min_value=0.001, max_value=0.05, value=0.015, step=0.001, format="%.3f")
+
+    # --- SIMULACIÓN NUMÉRICA DE LA EDO (Runge-Kutta 45) ---
+    sub_df = df.iloc[100:100+168].copy() # Ventana de 7 días
+    time_hours = np.arange(len(sub_df))
+    rad_data = sub_df['radiacion_solar'].values
+    T_real = sub_df['temp_c'].values
+    T0 = T_real[0]
+    T_base = np.mean(T_real) - 5 
+
+    def thermal_ode(t, T):
+        idx = int(np.clip(t, 0, len(rad_data)-1))
+        R_t = rad_data[idx]
+        dTdt = -(1.0 / tau_val) * (T[0] - T_base) + alpha_val * R_t
+        return [dTdt]
+
+    sol = solve_ivp(thermal_ode, [0, len(time_hours)-1], [T0], t_eval=time_hours, method='RK45')
+
+    fig_sim = go.Figure()
+    fig_sim.add_trace(go.Scatter(x=sub_df.index, y=T_real, mode='lines+markers', name='Datos Reales (API)', line=dict(color='#2E7D32', width=2)))
+    fig_sim.add_trace(go.Scatter(x=sub_df.index, y=sol.y[0], mode='lines', name=f'Modelo EDO (τ={tau_val}h)', line=dict(color='#D32F2F', width=2.5, dash='dash')))
+    
+    fig_sim.update_layout(
+        title="Validación del Modelo Físico EDO vs Observaciones Reales (Ventana de 7 días)",
+        xaxis_title="Fecha / Hora",
+        yaxis_title="Temperatura (°C)",
+        template="plotly_white",
+        height=400
+    )
+    st.plotly_chart(fig_sim, use_container_width=True)
+
+    st.divider()
+
+    # --- ESPACIO DE FASES ---
+    st.subheader("🌀 Retrato Topológico en el Espacio de Fases")
+    st.markdown("""
+    En **Sistemas Complejos**, analizamos la dinámica del ecosistema proyectando las variables de estado en el **Espacio de Fases** $[T(t) \\text{ vs. } \\text{Humedad del Suelo}(t)]$.
+    Los bucles cerrados reflejan **atractores de ciclo límite diarios**, cuya deriva en el eje Y indica transiciones estacionales de estrés hídrico.
+    """)
+
+    fig_phase = go.Figure()
+    fig_phase.add_trace(go.Scatter(
+        x=df['temp_c'], 
+        y=df['humedad_suelo'],
+        mode='markers',
+        marker=dict(
+            size=4,
+            color=df.index.month,
+            colorscale='Turbo',
+            colorbar=dict(title="Mes"),
+            opacity=0.6
+        ),
+        text=df.index.strftime('%Y-%m-%d %H:%m'),
+        name="Estado del Ecosistema"
+    ))
+
+    fig_phase.update_layout(
+        title="Atractor del Ecosistema: Temperatura vs Humedad del Suelo",
+        xaxis_title="Temperatura (°C)",
+        yaxis_title="Humedad del Suelo (m³/m³)",
+        template="plotly_white",
+        height=500
+    )
+    st.plotly_chart(fig_phase, use_container_width=True)
+
+# --- TAB 5: DATOS CRUDOS ---
+with tab5:
+    st.subheader("Exploración de Dataset Limpio")
     st.dataframe(df, use_container_width=True)
     
-    # Botón de descarga de datos
     csv = df.to_csv().encode('utf-8')
     st.download_button(
         label="📥 Descargar Dataset Limpio en CSV",
         data=csv,
-        file_name=f"calilegua_eco_data_{year_selected}.csv",
+        file_name=f"calilegua_eco_physics_{year_selected}.csv",
         mime="text/csv"
     )
