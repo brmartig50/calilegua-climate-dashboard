@@ -2,6 +2,9 @@
 
 Aplicación interactiva desarrollada en **Streamlit** y **Python** para el análisis exploratorio de datos meteorológicos históricos en el bioma de las Yungas (Jujuy, Argentina).
 
+
+🚀 **[Probar la aplicación interactiva en vivo en Streamlit Cloud](https://calilegua-climate-dashboard-xsw3n7rki6si5pnkhlnxln.streamlit.app/)**
+
 ## 📊 Características
 - **Ingesta de datos mediante API REST** de Open-Meteo.
 - **Tratamiento de series temporales** con Pandas (agregación horaria/diaria, suavizado por media móvil).
@@ -10,5 +13,6 @@ Aplicación interactiva desarrollada en **Streamlit** y **Python** para el anál
 ## 🛠️ Tecnologías utilizadas
 - Python 3.10+
 - Streamlit
-- Pandas & NumPy
-- Plotly Express
+- Pandas
+- NumPy
+- Plotly 
