@@ -8,7 +8,7 @@ from plotly.subplots import make_subplots
 from scipy.integrate import solve_ivp
 
 # ---------------------------------------------------------
-# 1. Configuración de la Página
+# 1. Configuración de la pagina
 # ---------------------------------------------------------
 st.set_page_config(
     page_title="P.N. Calilegua | Eco-Physics Dashboard",
@@ -29,6 +29,12 @@ st.markdown("""
     .sub-title {
         font-size: 1.1rem;
         color: #424242;
+        margin-bottom: 5px;
+    }
+    .author-title {
+        font-size: 1rem;
+        color: #1565C0;
+        font-weight: 600;
         margin-bottom: 20px;
     }
     .context-box {
@@ -42,10 +48,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 2. Hero Section & Contexto
+# 2. Contexto (Siempre visible)
 # ---------------------------------------------------------
 st.markdown('<p class="main-title">🌿 Parque Nacional Calilegua: Diagnóstico Eco-Físico</p>', unsafe_allow_html=True)
 st.markdown('<p class="sub-title">Series temporales multivariables y modelado dinámico de sistemas complejos en el bioma de las Yungas (Jujuy, Argentina)</p>', unsafe_allow_html=True)
+st.markdown('<p class="author-title">👨‍🔬 Autor: Bruno Martín González | Físico & Data Scientist</p>', unsafe_allow_html=True)
 
 with st.container():
     st.markdown("""
@@ -57,19 +64,28 @@ with st.container():
     """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 3. Sidebar (Controles y Parámetros)
+# 3. Sidebar (Controles y navegacion)
 # ---------------------------------------------------------
-st.sidebar.header("⚙️ Configuración del Análisis")
-year_selected = st.sidebar.selectbox("Selecciona el Año de Estudio:", [2023, 2022], index=0)
+st.sidebar.header("⚙️ Panel de Control")
+year_selected = st.sidebar.selectbox("📅 Selecciona el Año de Estudio:", [2024, 2023, 2022], index=0)
 
-st.sidebar.markdown("---")
-st.sidebar.subheader("👨‍🔬 Autor")
-st.sidebar.markdown("""
-**Bruno Martín González**  
-*Físico & Data Scientist*  
-*MSc en Sistemas Complejos y Biofísica*  
-[LinkedIn](https://www.linkedin.com/in/bruno-mart%C3%ADn-gonz%C3%A1lez-96349a245/)
-""")
+st.sidebar.divider()
+
+# Navegación vertical sustituyendo a las pestañas
+selected_view = st.sidebar.radio(
+    "📊 Selecciona la Vista de Análisis:",
+    options=[
+        "1. Balance Hídrico & Suelo", 
+        "2. Microclima & Atmósfera", 
+        "3. Matriz Térmica Mensual", 
+        "4. Modelado Físico (EDO) & Caos",
+        "5. Datos Crudos & Exportación"
+    ]
+)
+
+st.sidebar.divider()
+st.sidebar.markdown("[💻 Mi GitHub](https://github.com/brmartig50)")
+st.sidebar.markdown("[🔗 Mi LinkedIn](https://www.linkedin.com/in/bruno-mart%C3%ADn-gonz%C3%A1lez-96349a245/)")
 
 # ---------------------------------------------------------
 # 4. Ingesta de Datos Multi-Variable (API Open-Meteo)
@@ -117,7 +133,7 @@ with st.spinner("Descargando parámetros climáticos y edáficos desde la API...
     df = fetch_eco_data(year_selected)
 
 # ---------------------------------------------------------
-# 5. Tarjetas de Indicadores Clave (KPIs Eco-Climáticos)
+# 5. Tarjetas de Indicadores Clave (KPIs Eco-Climaticos)
 # ---------------------------------------------------------
 total_rain = df['precipitacion_mm'].sum()
 total_et0 = df['evapotranspiracion_mm'].sum()
@@ -137,18 +153,10 @@ col5.metric("🌱 Humedad Suelo (0-7cm)", f"{humedad_suelo_prom:.3f} m³/m³")
 st.markdown("---")
 
 # ---------------------------------------------------------
-# 6. Pestañas de Análisis con Conclusiones
+# 6. Vistas Dinámicas Controladas por el Menú Lateral
 # ---------------------------------------------------------
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "📊 Balance Hídrico & Suelo", 
-    "🌡️ Microclima & Atmósfera", 
-    "🔥 Matriz Térmica Mensual", 
-    "🔬 Modelado Físico (EDO) & Caos",
-    "📋 Datos Crudos & Exportación"
-])
 
-# --- TAB 1: BALANCE HÍDRICO Y SUELO ---
-with tab1:
+if selected_view == "1. Balance Hídrico & Suelo":
     st.subheader("Relación entre Precipitación, Evapotranspiración y Humedad del Suelo")
     
     df_daily = df.resample('D').agg({
@@ -175,8 +183,7 @@ with tab1:
     * **Importancia de la Condensación Occulta:** A pesar del déficit pluvial en invierno, la selva no colapsa gracias a las nieblas de ladera (lluvia horizontal), un factor biológico clave no contabilizado por la lluvia pluviométrica convencional.
     """)
 
-# --- TAB 2: MICROCLIMA Y ATMÓSFERA ---
-with tab2:
+elif selected_view == "2. Microclima & Atmósfera":
     st.subheader("Evolución Térmica y Humedad Relativa")
     
     fig_temp = go.Figure()
@@ -192,8 +199,7 @@ with tab2:
     * **Inercia Estacional:** La media móvil de 7 días revela transiciones térmicas suaves entre estaciones, evitando choques térmicos drásticos y proporcionando un ambiente estable para especies endémicas.
     """)
 
-# --- TAB 3: MATRIZ TÉRMICA ---
-with tab3:
+elif selected_view == "3. Matriz Térmica Mensual":
     st.subheader("Matriz de Temperatura Promedio: Hora vs Mes")
     
     df['mes'] = df.index.strftime('%b')
@@ -219,8 +225,7 @@ with tab3:
     * **Patrón Nocturno Estable:** Durante casi todo el año (incluso en verano), las temperaturas nocturnas (02:00 a 06:00 h) descienden por debajo de los 18 °C, permitiendo la condensación del vapor de agua en el follaje.
     """)
 
-# --- TAB 4: MODELADO FÍSICO & SISTEMAS COMPLEJOS ---
-with tab4:
+elif selected_view == "4. Modelado Físico (EDO) & Caos":
     st.subheader("🔬 Modelado Dinámico de Inercia Térmica (Ecuaciones Diferenciales)")
     st.markdown("""
     Formulamos un **Modelo Físico de Balance de Energía Simplificado** (Relajación Térmica de Newton) para evaluar la respuesta de la masa vegetal. 
@@ -309,8 +314,7 @@ with tab4:
     * **Deriva Estacional del Atractor:** La separación en el eje vertical entre la nube de puntos superior (verano/lluvias) e inferior (invierno/sequía) demuestra que el ecosistema transita entre dos estados cuasi-estables sin perder su estructura dinámica básica (resiliencia del sistema complejo).
     """)
 
-# --- TAB 5: DATOS CRUDOS ---
-with tab5:
+elif selected_view == "5. Datos Crudos & Exportación":
     st.subheader("Exploración de Dataset Limpio")
     st.dataframe(df, use_container_width=True)
     
