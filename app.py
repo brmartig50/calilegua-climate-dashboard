@@ -7,6 +7,9 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy.integrate import solve_ivp
 from datetime import timedelta
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error, r2_score
 
 # ---------------------------------------------------------
 # 1. Configuración de la Página
@@ -79,9 +82,12 @@ selected_view = st.sidebar.radio(
         "2. Microclima & Atmósfera", 
         "3. Matriz Térmica Mensual", 
         "4. Modelado Físico (EDO) & Espacio de Estados",
-        "5. Datos Crudos & Exportación"
+        "5. Machine Learning: Predicción Edáfica", 
+        "6. Datos Crudos & Exportación"
     ]
 )
+
+
 
 st.sidebar.divider()
 st.sidebar.markdown("[💻 Mi GitHub](https://github.com/brmartig50)")
@@ -307,7 +313,7 @@ elif selected_view == "4. Modelado Físico (EDO) & Espacio de Estados":
     st.divider()
 
     # --- ESPACIO DE ESTADOS ---
-    st.subheader("🌀 Espacio de Estados: Densidad Topológica")
+    st.subheader("Espacio de Estados: Densidad Topológica")
     st.markdown("Proyección de la estabilidad del ecosistema en el plano de estados $[T(t) \\text{ vs. } \\text{Humedad del Suelo}(t)]$. Se utiliza un modelo de contorno de densidad 2D para evaluar la cuenca de atracción.")
 
     fig_phase = go.Figure(go.Histogram2dContour(
@@ -331,6 +337,113 @@ elif selected_view == "4. Modelado Físico (EDO) & Espacio de Estados":
     * **Cuenca de Atracción:** Las áreas más cálidas (rojo/amarillo) en el mapa de densidad representan los regímenes más estables del ecosistema a lo largo del año (zonas de alta probabilidad donde el ecosistema pasa la mayor parte del tiempo).
     * **Transiciones No Estables:** Las densidades bajas (azul) demuestran que el sistema no se detiene en estados de transición (enfriamientos bruscos o desecaciones repentinas), lo que denota una alta resiliencia topológica.
     """)
+
+elif selected_view == "5. Machine Learning: Predicción Edáfica":
+    st.subheader("Predicción de Humedad del Suelo mediante Machine Learning")
+    st.markdown("""
+    En esta sección entrenamos un **Random Forest Regressor** en tiempo real para predecir la humedad del suelo a partir de variables atmosféricas. 
+    Ajusta los hiperparámetros del modelo a continuación para observar cómo influyen en el rendimiento de prueba y la estabilidad de las predicciones.
+    """)
+
+    # ---------------------------------------------------------
+    # 1. Controles de Hiperparámetros (Sliders Interactivos)
+    # ---------------------------------------------------------
+    st.markdown("### ⚙️ Panel de Hiperparámetros (Interactivo)")
+    col_hp1, col_hp2, col_hp3 = st.columns(3)
+    
+    with col_hp1:
+        n_estimators_val = st.slider(
+            "Número de Árboles (n_estimators):", 
+            min_value=10, max_value=200, value=100, step=10, 
+            help="Cantidad de árboles de decisión en el bosque de ensamblado."
+        )
+    with col_hp2:
+        max_depth_val = st.slider(
+            "Profundidad Máxima (max_depth):", 
+            min_value=2, max_value=20, value=10, step=1, 
+            help="Límite de profundidad de cada árbol para controlar el sobreajuste (overfitting)."
+        )
+    with col_hp3:
+        min_samples_split_val = st.slider(
+            "Min. Muestras por Div. (min_samples_split):", 
+            min_value=2, max_value=10, value=2, step=1, 
+            help="Mínimo de datos necesarios en un nodo interno para volver a dividirlo."
+        )
+
+    st.divider()
+
+    # ---------------------------------------------------------
+    # 2. Preparación de Datos (Features y Target)
+    # ---------------------------------------------------------
+    features = ['temp_c', 'humedad_relativa', 'precipitacion_mm', 'evapotranspiracion_mm', 'radiacion_solar']
+    target = 'humedad_suelo'
+
+    X = df[features]
+    y = df[target]
+
+    # Split temporal (shuffle=False es crucial en series temporales para evitar data leakage)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
+
+    # ---------------------------------------------------------
+    # 3. Entrenamiento con Hiperparámetros Dinámicos
+    # ---------------------------------------------------------
+    with st.spinner(f"Entrenando Random Forest con {n_estimators_val} árboles (profundidad={max_depth_val})..."):
+        rf_model = RandomForestRegressor(
+            n_estimators=n_estimators_val,
+            max_depth=max_depth_val,
+            min_samples_split=min_samples_split_val,
+            random_state=42
+        )
+        rf_model.fit(X_train, y_train)
+        y_pred = rf_model.predict(X_test)
+
+    # ---------------------------------------------------------
+    # 4. Métricas de Evaluación
+    # ---------------------------------------------------------
+    st.markdown("### 📊 Rendimiento del Modelo en el Set de Prueba")
+    r2 = r2_score(y_test, y_pred)
+    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+
+    col_m1, col_m2 = st.columns(2)
+    col_m1.metric("Coeficiente de Determinación (R²)", f"{r2:.3f}", help="Varianza explicada por el modelo (1.0 representa ajuste perfecto).")
+    col_m2.metric("Error Cuadrático Medio (RMSE)", f"{rmse:.4f} m³/m³", help="Desviación promedio entre predicción y valor real en m³/m³.")
+
+    st.divider()
+
+    # ---------------------------------------------------------
+    # 5. Visualización 1: Predicción vs Realidad (Serie Temporal)
+    # ---------------------------------------------------------
+    st.markdown("### 📈 Serie Temporal del Set de Test: Predicción vs Realidad")
+    
+    df_test = pd.DataFrame({'Real': y_test, 'Predicción': y_pred}, index=y_test.index)
+    
+    fig_ml = go.Figure()
+    fig_ml.add_trace(go.Scatter(x=df_test.index, y=df_test['Real'], mode='lines', name='Humedad Real (API)', line=dict(color='#2E7D32', width=2)))
+    fig_ml.add_trace(go.Scatter(x=df_test.index, y=df_test['Predicción'], mode='lines', name=f'Predicción RF (n={n_estimators_val}, depth={max_depth_val})', line=dict(color='#FFA726', width=2, dash='dot')))
+    
+    fig_ml.update_layout(template="plotly_white", height=400, xaxis_title="Fecha", yaxis_title="Humedad del Suelo (m³/m³)", legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+    st.plotly_chart(fig_ml, use_container_width=True)
+
+    # ---------------------------------------------------------
+    # 6. Visualización 2: Feature Importance
+    # ---------------------------------------------------------
+    st.markdown("### 🧠 Importancia Relativa de las Variables (Feature Importance)")
+    
+    importances = rf_model.feature_importances_
+    df_imp = pd.DataFrame({'Variable': features, 'Importancia': importances}).sort_values(by='Importancia', ascending=True)
+    
+    fig_imp = px.bar(df_imp, x='Importancia', y='Variable', orientation='h', color='Importancia', color_continuous_scale='Greens')
+    fig_imp.update_layout(template="plotly_white", height=350, showlegend=False)
+    st.plotly_chart(fig_imp, use_container_width=True)
+
+    st.success("""
+    💡 **Insights de Machine Learning Interactivo:**
+    * **Impacto de la Profundidad (`max_depth`):** Reducir demasiado la profundidad simplifica las decisiones del bosque (*underfitting*), mientras que aumentarla por encima de 15 puede saturar las métricas de prueba sin aportar ganancias reales.
+    * **Estabilidad del Ensamblado (`n_estimators`):** Incrementar el número de árboles suaviza los picos abruptos en las curvas de predicción y estabiliza el error.
+    * **Ausencia de Data Leakage:** El split en orden cronológico estricto (`shuffle=False`) garantiza que el modelo solo aprende del pasado para inferir la dinámica futura del suelo.
+    """)
+
+
 
 elif selected_view == "5. Datos Crudos & Exportación":
     st.subheader("Exploración del Dataframe Base")
