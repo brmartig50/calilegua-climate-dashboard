@@ -558,7 +558,7 @@ elif selected_view == "5. Machine Learning: Predicción Edáfica":
         # ---------------------------------------------------------
         st.divider()
         with st.expander("🔬 Nota Metodológica: ¿Por qué el modelo no 'auto-predice' en bucle a 1 año vista?", expanded=False):
-            st.markdown("""
+            st.markdown(r"""
             **Diferencia entre Nowcasting (1-Paso) y Predicción Autorregresiva Recursiva (Multi-Paso):**
 
             * **Arquitectura de Sensor IoT (Modo Actual - One-Step-Ahead):** 
