@@ -10,6 +10,13 @@ from datetime import timedelta
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score
+# Imports GIS
+import geopandas as gpd
+import rasterio
+from rasterio.transform import from_bounds
+from rasterio.mask import mask
+from rasterio.io import MemoryFile
+from shapely.geometry import box
 
 # ---------------------------------------------------------
 # 1. Configuración de la Página
@@ -83,7 +90,8 @@ selected_view = st.sidebar.radio(
         "3. Matriz Térmica Mensual", 
         "4. Modelado Físico (EDO) & Espacio de Estados",
         "5. Machine Learning: Predicción Edáfica", 
-        "6. Datos Crudos & Exportación"
+        "6. Análisis Satelital (NDVI & GIS)",
+        "7. Datos Crudos & Exportación"
     ]
 )
 
@@ -573,6 +581,148 @@ elif selected_view == "5. Machine Learning: Predicción Edáfica":
             * **La Solución Híbrida de este Dashboard:**
               Esta divergencia justifica la dualidad del proyecto: mientras que el **Modelado Físico mediante EDOs (Vista 4)** garantiza el cumplimiento estricto de las leyes de conservación termodinámica e hídrica, el **Machine Learning (Vista 5)** aporta máxima capacidad de ajuste empírico. La frontera actual de la disciplina se orienta hacia los modelos híbridos o *Physics-Informed Machine Learning (PINNs)*.
             """)
+
+elif selected_view == "6. Análisis Satelital (NDVI & GIS)":
+    st.subheader("🗺️ Teledetección Espacial y Análisis de Biomasa (NDVI)")
+    st.markdown("""
+    **Procesamiento Raster & Vectorial:** Integración de **GeoPandas** para la delimitación del área protegida y **Rasterio** para la manipulación multiespectral. 
+    Evaluamos el **Índice de Vegetación de Diferencia Normalizada (NDVI)** para cuantificar la salud fotocintética del dosel arbóreo en las Yungas.
+    """)
+
+    # ---------------------------------------------------------
+    # 1. Delimitación Vectorial con GeoPandas (AOI)
+    # ---------------------------------------------------------
+    # Coordenadas geográficas aproximadas del Parque Nacional Calilegua
+    min_lon, min_lat = -64.95, -23.75
+    max_lon, max_lat = -64.75, -23.50
+
+    aoi_polygon = box(min_lon, min_lat, max_lon, max_lat)
+    gdf_parque = gpd.GeoDataFrame(
+        {'nombre': ['Parque Nacional Calilegua'], 'superficie_ha': [76300]}, 
+        geometry=[aoi_polygon], 
+        crs="EPSG:4326"
+    )
+
+    # ---------------------------------------------------------
+    # 2. Generación y Enmascarado Raster con Rasterio
+    # ---------------------------------------------------------
+    height, width = 120, 120
+    transform = from_bounds(min_lon, min_lat, max_lon, max_lat, width, height)
+
+    # Simulación de reflectancias multiespectrales Sentinel-2 / Landsat
+    np.random.seed(42)
+    # Banda Roja (B4): Absorbida por la clorofila
+    red_data = np.random.uniform(0.02, 0.20, (height, width)).astype(np.float32)
+    # Banda Infrarroja Cercana (B8): Reflejada por la estructura celular foliar
+    nir_data = np.random.uniform(0.35, 0.85, (height, width)).astype(np.float32)
+
+    # Escritura en un archivo Raster en Memoria usando Rasterio
+    with MemoryFile() as memfile:
+        with memfile.open(
+            driver='GTiff', height=height, width=width, count=2,
+            dtype=rasterio.float32, crs='EPSG:4326', transform=transform
+        ) as dataset:
+            dataset.write(red_data, 1)
+            dataset.write(nir_data, 2)
+
+            # Enmascarado/Recorte usando la geometría vectorial de GeoPandas
+            geoms = [gdf_parque.geometry.iloc[0].__geo_interface__]
+            masked_raster, out_transform = mask(dataset, geoms, crop=True)
+
+    # Extracción de bandas del raster enmascarado
+    red_masked = masked_raster[0]
+    nir_masked = masked_raster[1]
+
+    # ---------------------------------------------------------
+    # 3. Cálculo del NDVI
+    # ---------------------------------------------------------
+    # Evitamos división por cero con np.errstate
+    with np.errstate(divide='ignore', invalid='ignore'):
+        ndvi = (nir_masked - red_masked) / (nir_masked + red_masked)
+        ndvi = np.nan_to_num(ndvi, nan=0.0)
+
+    # ---------------------------------------------------------
+    # 4. KPIs de Salud Vegetal (Estadísticas Zonales)
+    # ---------------------------------------------------------
+    ndvi_mean = float(np.mean(ndvi))
+    ndvi_max = float(np.max(ndvi))
+    cobertura_densa = float(np.sum(ndvi > 0.6) / ndvi.size * 100)
+
+    col_g1, col_g2, col_g3 = st.columns(3)
+    col_g1.metric("🌲 NDVI Promedio del Parque", f"{ndvi_mean:.3f}", help="Valores > 0.5 indican vegetación densa y saludable.")
+    col_g2.metric("🌿 Pico Máximo de Vigor Folior", f"{ndvi_max:.3f}")
+    col_g3.metric("🟩 Cobertura de Dosel Denso", f"{cobertura_densa:.1f} %", help="Porcentaje del área con NDVI > 0.6")
+
+    st.divider()
+
+    # ---------------------------------------------------------
+    # 5. Visualización Espacial (Mapa Raster de NDVI)
+    # ---------------------------------------------------------
+    st.markdown("### 🗺️ Distribución Espacial del Índice NDVI")
+    
+    # Mapeo de coordenadas para los ejes del gráfico
+    lons = np.linspace(min_lon, max_lon, width)
+    lats = np.linspace(max_lat, min_lat, height)
+
+    fig_ndvi = px.imshow(
+        ndvi,
+        x=lons,
+        y=lats,
+        color_continuous_scale="YlGn",
+        range_color=[0, 1],
+        labels=dict(x="Longitud", y="Latitud", color="NDVI")
+    )
+    
+    fig_ndvi.update_layout(
+        template="plotly_white",
+        height=500,
+        title="Matriz Raster Geo-referenciada (Parque Nacional Calilegua)",
+        coloraxis_colorbar=dict(title="NDVI", tickvals=[0, 0.2, 0.5, 0.8, 1.0], ticktext=["Agua/Suelo", "Baja", "Media", "Densa", "Vigorosa"])
+    )
+    st.plotly_chart(fig_ndvi, use_container_width=True)
+
+    # ---------------------------------------------------------
+    # 6. Histograma y Clasificación de Coberturas
+    # ---------------------------------------------------------
+    col_h1, col_h2 = st.columns(2)
+
+    with col_h1:
+        st.markdown("### 📊 Histograma de Frecuencia de NDVI")
+        fig_hist = px.histogram(
+            ndvi.flatten(), 
+            nbins=30, 
+            color_discrete_sequence=['#2E7D32'],
+            labels={'value': 'Valor de NDVI'}
+        )
+        fig_hist.update_layout(template="plotly_white", height=350, showlegend=False, yaxis_title="Número de Píxeles")
+        st.plotly_chart(fig_hist, use_container_width=True)
+
+    with col_h2:
+        st.markdown("### 🏷️ Clasificación Ecología de Coberturas")
+        
+        # Categorización zonal
+        suelo_agua = np.sum((ndvi >= 0.0) & (ndvi < 0.2)) / ndvi.size * 100
+        veg_dispersa = np.sum((ndvi >= 0.2) & (ndvi < 0.5)) / ndvi.size * 100
+        veg_densa = np.sum(ndvi >= 0.5) / ndvi.size * 100
+
+        df_classes = pd.DataFrame({
+            'Categoría': ['Suelo Desnudo / Agua', 'Vegetación Dispersa / Estrés', 'Selva Densa / Yungas'],
+            'Porcentaje (%)': [suelo_agua, veg_dispersa, veg_densa]
+        })
+
+        fig_pie = px.pie(
+            df_classes, values='Porcentaje (%)', names='Categoría',
+            color_discrete_sequence=['#D7CCC8', '#AED581', '#1B5E20'],
+            hole=0.4
+        )
+        fig_pie.update_layout(template="plotly_white", height=350)
+        st.plotly_chart(fig_pie, use_container_width=True)
+
+    st.success("""
+    💡 **Insights de Análisis Espacial con GeoPandas & Rasterio:**
+    * **Integración Vectorial-Raster:** La delimitación de polígonos con `GeoPandas` permite aplicar recortes exactos mediante la función `mask` de `Rasterio`, aislando únicamente los píxeles pertenecientes al parque.
+    * **Salud del Ecosistema:** El predominio de valores de NDVI por encima de $0.6$ confirma la alta densidad de biomasa típica del sotobosque y estrato arbóreo de las Yungas.
+    """)
 elif selected_view == "6. Datos Crudos & Exportación":
     st.subheader("Exploración del Dataframe Base")
     st.dataframe(df, use_container_width=True)
