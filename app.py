@@ -552,6 +552,27 @@ elif selected_view == "5. Machine Learning: Predicción Edáfica":
             * **Dispersión en Diagnóstico 1:1:** La nube de puntos en el gráfico de calibración se aleja significativamente de la diagonal ideal, mostrando alta varianza en los picos de sequía y humedad.
             * **Demostración Físico-Matemática:** Este experimento prueba empíricamente que la humedad del suelo es un **sistema con memoria**, donde el estado térmico e hídrico previo condiciona fuertemente el comportamiento futuro.
             """)
+
+# ---------------------------------------------------------
+        # 8. Nota de Rigor Científico: Nowcasting vs. Forecasting
+        # ---------------------------------------------------------
+        st.divider()
+        with st.expander("🔬 Nota Metodológica: ¿Por qué el modelo no 'auto-predice' en bucle a 1 año vista?", expanded=False):
+            st.markdown("""
+            **Diferencia entre Nowcasting (1-Paso) y Predicción Autorregresiva Recursiva (Multi-Paso):**
+
+            * **Arquitectura de Sensor IoT (Modo Actual - One-Step-Ahead):** 
+              En el modo *Con Memoria*, el modelo utiliza en cada hora la medición real previa del suelo ($S_{t-1}$). Es la arquitectura ideal para **telemetría en tiempo real, calibración de sensores e interpolación**, alcanzando un $R^2 > 0.95$ gracias a la alta autocorrelación edáfica.
+            
+            * **¿Qué pasaría en una Predicción Recursiva Pura (sin sensores en 2024)?**
+              Si el modelo tuviera que predecir las 8.760 horas de 2024 reutilizando de forma enlazada sus propias predicciones ($\hat{S}_{t-1} \rightarrow \hat{S}_t$), el pequeño error de cada hora se acumularía en cascada (**propagación del error**).
+
+            * **El 'Ancla' Meteorológica y las Limitaciones de los Árboles:**
+              Aunque los eventos reales de lluvia actúan como un *freno/reseteo* que evita que el error explote al infinito, los bosques aleatorios no resuelven ecuaciones de conservación de la masa. La alta dominancia de la variable $S_{t-1}$ sobre los primeros cortes del árbol puede causar un atrapamiento estructural de ramas (*feature lock-in*).
+
+            * **La Solución Híbrida de este Dashboard:**
+              Esta divergencia justifica la dualidad del proyecto: mientras que el **Modelado Físico mediante EDOs (Vista 4)** garantiza el cumplimiento estricto de las leyes de conservación termodinámica e hídrica, el **Machine Learning (Vista 5)** aporta máxima capacidad de ajuste empírico. La frontera actual de la disciplina se orienta hacia los modelos híbridos o *Physics-Informed Machine Learning (PINNs)*.
+            """)
 elif selected_view == "6. Datos Crudos & Exportación":
     st.subheader("Exploración del Dataframe Base")
     st.dataframe(df, use_container_width=True)
