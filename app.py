@@ -489,7 +489,7 @@ elif selected_view == "5. Machine Learning: Predicción Edáfica":
         * **Evaluación Fuera de Muestra (Out-of-Sample):** Las métricas mostradas corresponden exclusivamente al rendimiento en el año 2024, imitando un escenario de producción real en el que se predicen las condiciones del año en curso a partir del histórico.
         """)
 
-elif selected_view == "5. Datos Crudos & Exportación":
+elif selected_view == "6. Datos Crudos & Exportación":
     st.subheader("Exploración del Dataframe Base")
     st.dataframe(df, use_container_width=True)
     
