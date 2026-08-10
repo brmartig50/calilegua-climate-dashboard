@@ -61,19 +61,19 @@ st.markdown("""
 # ---------------------------------------------------------
 # 2. Contexto (Siempre visible)
 # ---------------------------------------------------------
-st.markdown('<p class="main-title">🌿 Parque Nacional Calilegua: Diagnóstico Eco-Físico</p>', unsafe_allow_html=True)
-st.markdown('<p class="sub-title">Series temporales multivariables y modelado dinámico de sistemas complejos en el bioma de las Yungas (Jujuy, Argentina)</p>', unsafe_allow_html=True)
-st.markdown('<p class="author-title">👨‍🔬 Autor: Bruno Martín González | Física, Clima & Data Science</p>', unsafe_allow_html=True)
+st.markdown('<p class="main-title">🌿 Parque Nacional Calilegua: Diagnóstico Eco-Físico & GIS</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-title">Series temporales multivariables, modelado dinámico, Machine Learning e información satelital en las Yungas (Jujuy, Argentina)</p>', unsafe_allow_html=True)
+st.markdown('<p class="author-title">👨‍🔬 Autor: Bruno Martín González | Física, Clima, GIS & Data Science</p>', unsafe_allow_html=True)
 
 with st.container():
     st.markdown("""
     <div class="context-box">
     <b>Contexto Científico:</b> El Parque Nacional Calilegua resguarda una muestra clave de las <i>Yungas</i> (selva de montaña). 
-    Este dashboard combina la ingesta de datos meteorológicos y edáficos por API con <b>modelado físico basado en ecuaciones diferenciales (EDO)</b> 
-    y análisis topológico en el <b>espacio de estados</b> para evaluar el balance hídrico y la inercia térmica del ecosistema.
+    Esta plataforma integra la ingesta continua de datos meteorológicos y edáficos por API con <b>modelado físico mediante ecuaciones diferenciales (EDO)</b>, 
+    <b>Machine Learning autorregresivo (Random Forest con inercia edáfica y lags)</b> y <b>teledetección espacial satelital (GIS con GeoPandas & Rasterio)</b> 
+    para evaluar el balance hídrico, la inercia térmica y la salud fototrófica (NDVI) del ecosistema.
     </div>
     """, unsafe_allow_html=True)
-
 # ---------------------------------------------------------
 # 3. Sidebar (Controles y Navegación)
 # ---------------------------------------------------------
