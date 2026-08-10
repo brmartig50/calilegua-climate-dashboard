@@ -5,3 +5,6 @@ scipy
 requests
 plotly
 scikit-learn
+geopandas
+rasterio
+shapely
