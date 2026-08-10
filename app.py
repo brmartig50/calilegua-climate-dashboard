@@ -723,7 +723,7 @@ elif selected_view == "6. Análisis Satelital (NDVI & GIS)":
     * **Integración Vectorial-Raster:** La delimitación de polígonos con `GeoPandas` permite aplicar recortes exactos mediante la función `mask` de `Rasterio`, aislando únicamente los píxeles pertenecientes al parque.
     * **Salud del Ecosistema:** El predominio de valores de NDVI por encima de $0.6$ confirma la alta densidad de biomasa típica del sotobosque y estrato arbóreo de las Yungas.
     """)
-elif selected_view == "6. Datos Crudos & Exportación":
+elif selected_view == "7. Datos Crudos & Exportación":
     st.subheader("Exploración del Dataframe Base")
     st.dataframe(df, use_container_width=True)
     
