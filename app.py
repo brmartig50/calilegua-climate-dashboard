@@ -376,8 +376,8 @@ elif selected_view == "4. Modelado Físico (EDO) & Espacio de Estados":
     * **Cuenca de Atracción:** Las áreas más cálidas (rojo/amarillo) en el mapa de densidad representan los regímenes más estables del ecosistema a lo largo del año (zonas de alta probabilidad donde el ecosistema pasa la mayor parte del tiempo).
     * **Transiciones No Estables:** Las densidades bajas (azul) demuestran que el sistema no se detiene en estados de transición (enfriamientos bruscos o desecaciones repentinas), lo que denota una alta resiliencia topológica.
     """)
-elif selected_view == "5. Machine Learning: Predicción Edáfica 🤖":
-    st.subheader("🤖 Predicción Interanual de Humedad del Suelo")
+elif selected_view == "5. Machine Learning: Predicción Edáfica":
+    st.subheader("Predicción Interanual de Humedad del Suelo")
     st.markdown("""
     **Estrategia de Modelado Climático:** Para respetar la ciclicidad estacional del ecosistema (estaciones secas y húmedas), entrenamos el modelo con **2 años completos de histórico (2022 y 2023)** y evaluamos su capacidad predictiva sobre un **año entero totalmente independiente (2024)**.
     """)
